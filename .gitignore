@@ -3,3 +3,6 @@ main
 main.msqueue
 main.global_lock
 main.optimistic
+main.fc_queue
+main.fc_dedicated
+main.fc_hybrid

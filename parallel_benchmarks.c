@@ -17,6 +17,10 @@
 #	include "msqueue-noaba.h"
 #elif defined(OPTIMISTIC)
 #	include "optimistic_queue.h"
+#elif defined(FC_QUEUE)
+#	include "fc_queue.h"
+#elif defined(FC_DEDICATED)
+#	include "fc_dedicated.h"
 #else
 #	error "Please define  queue type\n"
 #endif
@@ -115,6 +119,15 @@ void *thread_fn(void *args)
 		timer_start(wall_timer);
 	pthread_barrier_wait(&barrier);
 
+#ifdef FC_DEDICATED
+    if (params->tid ==0) enqueue(&Q,0,params);
+    else if (params->tid ==1) {
+        int deq;
+        dequeue(&Q,&deq,params);
+    }
+    else{
+
+#endif
 	for (i=0; i < params->nr_operations; i++) {
 #if defined(WORKLOAD_TIME) || defined (WORKLOAD_ONE_THREAD)
 		if (params->time_to_leave)
@@ -139,7 +152,10 @@ void *thread_fn(void *args)
             
 		}
 	}
-
+#ifdef FC_DEDICATED
+    }
+    if (params->tid > 1 ) __sync_fetch_and_add(&finished_flag,1);
+#endif
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
 		timer_stop(wall_timer);
@@ -169,9 +185,14 @@ double pthreads_benchmark()
 	
     initialize(&Q, nthreads);
     
+    init_params.tid=0;
     int res;
 	for (i=0; i < clargs.init_insertions; i++) {
-		enqueue(&Q, i, &init_params);
+#ifdef FC_DEDICATED
+        _enqueue(&Q, i);
+#else
+        enqueue(&Q, i, &init_params);
+#endif
         /*if(clargs.verify==1) {//FIXME
             if (res){
                 elements_count++;
@@ -192,7 +213,11 @@ double pthreads_benchmark()
 		memset(&params[i], 0, sizeof(*params));
 		params[i].tid = i;
 #ifdef WORKLOAD_FIXED
+    #ifdef FC_DEDICATED
+		params[i].nr_operations = nr_operations / (nthreads-2);
+    #else
 		params[i].nr_operations = nr_operations / nthreads;
+    #endif
 #elif WORKLOAD_TIME
 		params[i].nr_operations = UINT32_MAX;
 #else

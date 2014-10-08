@@ -2,8 +2,8 @@ CC = /various/common_tools/gcc-4.8.2/bin/gcc-4.8.2
 CFLAGS = -Wall -Wextra -g 
 
 CFLAGS += -pthread
-WORKLOAD = -DWORKLOAD_TIME
-#WORKLOAD = -DWORKLOAD_FIXED
+#WORKLOAD = -DWORKLOAD_TIME
+WORKLOAD = -DWORKLOAD_FIXED
 CFLAGS += $(WORKLOAD)
 CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
@@ -11,7 +11,7 @@ CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
 #LDFLAGS = -L/home/users/jimsiak/local/lib/ -ltcmalloc
 
-PROGS =  main.global_lock main.msqueue main.optimistic
+PROGS =  main.global_lock main.msqueue main.optimistic main.fc_queue main.fc_dedicated
 
 all: $(PROGS)
 
@@ -25,6 +25,12 @@ main.msqueue: $(SRC)
 
 main.optimistic: $(SRC)
 	$(CC) $(CFLAGS) -mcx16 -DOPTIMISTIC -o $@ $^
+
+main.fc_queue: $(SRC)
+	$(CC) $(CFLAGS) -DFC_QUEUE -o $@ $^
+
+main.fc_dedicated: $(SRC)
+	$(CC) $(CFLAGS) -DFC_DEDICATED -o $@ $^
 
 clean:
 	rm -f $(PROGS)
