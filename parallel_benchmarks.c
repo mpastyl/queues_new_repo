@@ -21,6 +21,8 @@
 #	include "fc_queue.h"
 #elif defined(FC_DEDICATED)
 #	include "fc_dedicated.h"
+#elif defined(FC_HYBRID)
+#	include "fc_hybrid.h"
 #else
 #	error "Please define  queue type\n"
 #endif
@@ -32,7 +34,8 @@ static pthread_t *threads;
 static params_t *params;
 static pthread_barrier_t barrier;
 int elements_count=0;
-long long int total_value_sum=0;
+long long int total_enq_sum=0;
+long long int total_deq_sum=0;
 
 
 static void params_print()
@@ -50,36 +53,39 @@ static void params_print()
 		total_enqueues += params[i].enqueues;
 		total_dequeues += params[i].dequeues;
         
-        /*
+        
         if (clargs.verify == 1){
-            elements_count += params[i].real_insertions;
-            elements_count -= params[i].real_deletions;
-            total_value_sum += params[i].value_sum;
+           //elements_count += params[i].enqueues
+          //elements_count -= params[i].dequeues;
+            total_enq_sum += params[i].enq_sum;
+            total_deq_sum += params[i].deq_sum;
         }
-        */
+        
 	}
 	printf("%10s %8d ( %8d %8d )\n", "TotalStat",
 	       total_operations, total_enqueues, total_dequeues);
 	printf("\n");
 
-    /*
+    
     if (clargs.verify==1){
-        printf("\nTest1 start!\n");
+        /*printf("\nTest1 start!\n");
         int expected_count = find_elements_count(&ht);
         if(expected_count == elements_count) printf("Test1 PASSED\n\n");
         else{
             printf("Test1 FAILED\n");
             printf(" elements in HT == %d , elements_counted == %d\n\n",expected_count,elements_count);
         }
-        printf("\nTest2 start!\n");
-        long long int expected_sum = find_elements_sum(&ht);
-        if(expected_sum == total_value_sum) printf("Test2 PASSED\n\n");
+        */
+        printf("\nTest start!\n");
+        long long int found_sum = find_element_sum(&Q);
+        if((found_sum +total_deq_sum) == total_enq_sum) printf("Test PASSED\n\n");
         else{
-            printf("Test2 FAILED\n");
-            printf(" expected sum == %lld , sum found== %lld\n\n",expected_sum,total_value_sum);
+            printf("Test FAILED\n");
+            printf(" found sum == %lld +  total_deq %lld = %lld  VS  total_enq %lld\n",
+            found_sum, total_deq_sum, found_sum+total_deq_sum ,total_enq_sum);
         }
     }
-    */
+    
 
 
 	printf("Verbose timers: insert_lock_set_tsc\n");
@@ -114,6 +120,8 @@ void *thread_fn(void *args)
 	srand48_r(params->tid * clargs.thread_seed, &drand_buffer);
 	tsc_init(&params->insert_lock_set_tsc);
 
+    params->enq_sum=params->deq_sum=0;
+
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
 		timer_start(wall_timer);
@@ -143,11 +151,12 @@ void *thread_fn(void *args)
 		if (choice < clargs.enqueue_frac) {         /* enqueue   */
 			params->enqueues++;
 			enqueue(&Q, key, params);
+            params->enq_sum+=key;
             //params->value_sum += key;
             
 		} else {                                   /* deletion */
 			params->dequeues++;
-			dequeue(&Q, &key, params) ;
+			if (dequeue(&Q, &key, params)) params->deq_sum+=key;
             //params->value_sum -= key;
             
 		}
@@ -193,6 +202,7 @@ double pthreads_benchmark()
 #else
         enqueue(&Q, i, &init_params);
 #endif
+        total_enq_sum+=i;
         /*if(clargs.verify==1) {//FIXME
             if (res){
                 elements_count++;

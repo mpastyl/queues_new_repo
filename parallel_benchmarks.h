@@ -16,8 +16,10 @@ typedef struct {
 	         enqueues, 
 	         dequeues;
     char pad2[(64-3*sizeof(unsigned))/sizeof(char)];
-    long long int value_sum;        
+    long long int enq_sum;        
     char pad3[(64-sizeof(long long int))/sizeof(char)];
+    long long int deq_sum;        
+    char pad13[(64-sizeof(long long int))/sizeof(char)];
 #ifdef WORKLOAD_TIME
 	unsigned int time_to_leave;
     char pad4[(64-sizeof(unsigned int))/sizeof(char)];

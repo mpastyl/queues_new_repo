@@ -11,7 +11,7 @@ CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
 #LDFLAGS = -L/home/users/jimsiak/local/lib/ -ltcmalloc
 
-PROGS =  main.global_lock main.msqueue main.optimistic main.fc_queue main.fc_dedicated
+PROGS =  main.global_lock main.msqueue main.optimistic main.fc_queue main.fc_dedicated main.fc_hybrid
 
 all: $(PROGS)
 
@@ -31,6 +31,9 @@ main.fc_queue: $(SRC)
 
 main.fc_dedicated: $(SRC)
 	$(CC) $(CFLAGS) -DFC_DEDICATED -o $@ $^
+
+main.fc_hybrid: $(SRC)
+	$(CC) $(CFLAGS) -DFC_HYBRID -o $@ $^
 
 clean:
 	rm -f $(PROGS)

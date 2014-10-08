@@ -24,7 +24,8 @@ struct queue_t{
 void initialize(struct queue_t * Q,int nthreads){//TODO: init count?
 	struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
 	node->next = NULL;
-	Q->Head = node; //TODO: check this
+	node->value=0;
+    Q->Head = node; //TODO: check this
 	Q->Tail = node;
     lock_init(Q);
     //Q->lock = 0;
@@ -99,6 +100,20 @@ int dequeue(struct queue_t * Q, int * val,params_t * params){
     //Q->lock = 0;
 
     return ret;
+}
+
+long long int find_element_sum(struct queue_t * Q){
+    
+    struct node_t * curr;
+    long long res=0;
+    curr= Q->Head;
+    while(curr!=Q->Tail){
+        res+=curr->value;
+        curr=curr->next;
+    }
+    res+=curr->value;
+    res-=Q->Head->value;
+    return res;
 }
 
 void printqueue(struct queue_t * Q){
