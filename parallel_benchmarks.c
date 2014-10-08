@@ -13,8 +13,12 @@
 
 #ifdef GLOBAL_LOCK
 #	include "global_lock.h"
+#elif defined(MSQUEUE)
+#	include "msqueue-noaba.h"
+#elif defined(OPTIMISTIC)
+#	include "optimistic_queue.h"
 #else
-#	error "Please define a queue type\n"
+#	error "Please define  queue type\n"
 #endif
 
 /* The Hash Table */
