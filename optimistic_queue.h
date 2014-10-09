@@ -24,7 +24,7 @@ struct queue_t{
 }__attribute__ ((packed));
 
 
-int DUMMY_VAL = 101;//TODO: change this
+int DUMMY_VAL = INT32_MAX;
 
 __int128 get_count(__int128 a){
 
@@ -169,6 +169,28 @@ int dequeue(struct queue_t * Q,int * p_val, params_t * params){
 
 
             
+}
+
+long long int find_element_sum(struct queue_t * Q){
+    
+    struct pointer_t  curr ;
+    struct pointer_t  prev;
+    long long res=0;
+    int val;
+    curr = Q->Head;
+    prev = ((struct node_t *)get_pointer(Q->Head.both))->prev;
+    while (get_pointer(curr.both) != get_pointer(Q->Tail.both)){
+        val =((struct node_t *)get_pointer(curr.both))->value;
+        if(val!=DUMMY_VAL) res+=val;
+        curr = prev;
+        prev = ((struct node_t *)get_pointer(curr.both)) ->prev;
+    }
+    val =((struct node_t *)get_pointer(curr.both))->value;
+    if(val!=DUMMY_VAL) res+=val;
+    //res-=((struct node_t *)get_pointer(Q->Head.both))->value;
+    //printf("%\n%d\n",((struct node_t *)get_pointer(Q->Tail.both))->value);
+    //printf("%\n%d\n",((struct node_t *)get_pointer(Q->Head.both))->value);
+    return res;
 }
 
 void printqueue(struct queue_t * Q){

@@ -191,6 +191,30 @@ int try_access_deq(struct queue_t * Q,struct pub_record *  pub,int operation, in
 }
 
 
+long long int find_element_sum(struct queue_t * Q){
+    
+    struct node_t * curr ;
+    struct node_t * next ;
+    long long int res=0;
+    int i;
+    curr = Q->Head;
+    next = Q->Head->next;
+    while (curr != Q->Tail){
+//    while (curr){
+        for(i=curr->deq_count;i<(curr->enq_count-1);i++){
+//            printf("%d ",curr->value[i]);
+            res+=curr->value[i];
+        }
+        curr = next;
+        next = curr ->next;
+    }
+   for(i=curr->deq_count;i<(curr->enq_count);i++){
+//      printf("%d ",curr->value[i]);
+        res+=curr->value[i];
+   }
+    //printf("%d ",curr->value);
+   return res; 
+}
 
 
 void printqueue(struct queue_t * Q){

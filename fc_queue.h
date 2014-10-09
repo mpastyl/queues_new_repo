@@ -38,13 +38,14 @@ struct pub_record{ //TODO: pad?? to avoid false sharing.
     char pad4[(64-sizeof(int ))/sizeof(char)];
 } __attribute__ ((packed));
 
-int ERROR_VALUE=500004;
+int ERROR_VALUE=INT32_MAX;
 
 
 
 void _initialize(struct queue_t * Q,struct pub_record * pub_enq,struct pub_record * pub_deq,int n){//TODO: init count?
 	int i;
     struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
+    for (i=0;i<MAX_VALUES;i++) node->value[i]=0;
 	node->next = NULL;
     node->enq_count=0;
     node->deq_count=0;
@@ -69,7 +70,9 @@ void _enqueue(struct queue_t * Q, int val){
         tail->enq_count++;
     }
     else{
+        int i;
         struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
+        for (i=0;i<MAX_VALUES;i++) node->value[i]=0;
         node->deq_count=0;
         node->value[0]=val;
         node->next=NULL;
@@ -203,6 +206,30 @@ int try_access_deq(struct queue_t * Q,struct pub_record *  pub,int operation, in
    }
 }
 
+long long int find_element_sum(struct queue_t * Q){
+    
+    struct node_t * curr ;
+    struct node_t * next ;
+    long long int res=0;
+    int i;
+    curr = Q->Head;
+    next = Q->Head->next;
+    while (curr != Q->Tail){
+//    while (curr){
+        for(i=curr->deq_count;i<(curr->enq_count-1);i++){
+//            printf("%d ",curr->value[i]);
+            res+=curr->value[i];
+        }
+        curr = next;
+        next = curr ->next;
+    }
+   for(i=curr->deq_count;i<(curr->enq_count);i++){
+//      printf("%d ",curr->value[i]);
+        res+=curr->value[i];
+   }
+    //printf("%d ",curr->value);
+   return res; 
+}
 
 void printqueue(struct queue_t * Q){
     
@@ -212,9 +239,10 @@ void printqueue(struct queue_t * Q){
     curr = Q->Head;
     next = Q->Head->next;
     while (curr != Q->Tail){
-        for(i=curr->deq_count;i<curr->enq_count;i++){
+        for(i=curr->deq_count;i<(curr->enq_count-1);i++){
             printf("%d ",curr->value[i]);
         }
+        printf("\n----------------------\n");
         curr = next;
         next = curr ->next;
     }

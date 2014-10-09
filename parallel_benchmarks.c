@@ -262,6 +262,6 @@ double pthreads_benchmark()
 	}
 
 	//print_set_length(&Q);
-
-	return timer_report_sec(wall_timer);
+	
+    return timer_report_sec(wall_timer);
         }
