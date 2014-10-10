@@ -38,6 +38,8 @@ for filename in sys.argv[1:]:
             throughput = float(line.split()[1])
             if (name == "fc_dedicated" and local_nthreads_axis[-1]<3):
                 throughput = None
+            if (name == "fc_hybrid" and local_nthreads_axis[-1]<8):
+                throughput = None
             local_results.append(throughput)
 
         line = fp.readline()

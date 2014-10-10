@@ -36,7 +36,7 @@ double * timers;
 int NUM;
 
 
-int ERROR_VALUE=500004;
+int ERROR_VALUE=INT32_MAX;
 
 void _initialize(struct queue_t * Q,struct pub_record * pub_enq,struct pub_record * pub_deq,int n){//TODO: init count?
 	int i;

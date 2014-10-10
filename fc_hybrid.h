@@ -39,7 +39,7 @@ struct pub_record{ //TODO: pad?? to avoid false sharing.
     char pad4[(64-sizeof(int))/sizeof(char)];
 } __attribute__ ((packed));
 
-int ERROR_VALUE=5004;
+int ERROR_VALUE=INT32_MAX;
 
 
 
