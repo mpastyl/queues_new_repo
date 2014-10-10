@@ -1,6 +1,7 @@
 *.out
 main
-main.msqueue
+main.msqueue_aba
+main.msqueue_noaba
 main.global_lock
 main.optimistic
 main.fc_queue

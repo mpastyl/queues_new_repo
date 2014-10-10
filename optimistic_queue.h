@@ -32,11 +32,13 @@ __int128 get_count(__int128 a){
     return b;
 }
 
-__int128 get_pointer(__int128 a){
+#define get_pointer(a) (a&0x0000000000000000ffffffffffffffff)
+/*__int128 get_pointer(__int128 a){
     __int128 b = a << 64;
     b= b >>64;
     return b;
 }
+*/
 
 __int128 set_count(__int128  a, __int128 count){
     __int128 count_temp =  count << 64;
@@ -45,7 +47,10 @@ __int128 set_count(__int128  a, __int128 count){
     return b;
 }
 
-__int128 set_pointer(__int128 a, __int128 ptr){
+#define set_pointer(a, ptr) ((a & 0xffffffffffffffff0000000000000000)| \
+        (ptr & 0x0000000000000000ffffffffffffffff))
+    
+/*__int128 set_pointer(__int128 a, __int128 ptr){
     __int128 b = 0;
     __int128 c = get_count(a);
     b = set_count(b,c);
@@ -53,7 +58,7 @@ __int128 set_pointer(__int128 a, __int128 ptr){
     b= b | ptr;
     return b;
 }
-
+*/
 __int128 set_both(__int128 a, __int128 ptr, __int128 count){
     a=set_pointer(a,ptr);
     a=set_count(a,count);

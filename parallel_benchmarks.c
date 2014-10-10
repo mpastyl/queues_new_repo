@@ -15,6 +15,8 @@
 #	include "global_lock.h"
 #elif defined(MSQUEUE)
 #	include "msqueue-noaba.h"
+#elif defined(MSQUEUE_ABA)
+#	include "msqueue.h"
 #elif defined(OPTIMISTIC)
 #	include "optimistic_queue.h"
 #elif defined(FC_QUEUE)
