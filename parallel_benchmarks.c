@@ -10,6 +10,7 @@
 #include "parallel_benchmarks.h"
 #include "clargs.h"
 #include "aff.h"
+#include "prfcnt_snb.h"
 
 #ifdef GLOBAL_LOCK
 #	include "global_lock.h"
@@ -103,6 +104,21 @@ static void params_print()
 	       (double) total_operations / (clargs.run_time_sec * 1000000));
 	printf("\n");
 #endif
+	
+#ifdef FC_QUEUE
+	printf("\n");
+	printf("Verbose timers: fc_pub_spin_tsc\n");
+	for (i=0; i < clargs.num_threads; i++) {
+		printf("Thread %2d: %4.2lf\n", params[i].tid, 
+		       tsc_getsecs(&params[i].fc_pub_spin_tsc));
+	}
+	printf("\n");
+#endif
+
+	printf("\n");
+	for (i=0; i < clargs.num_threads; i++)
+		prfcnt_report(&params[i].prfcnt);
+
 }
 
 
@@ -116,18 +132,8 @@ void *thread_fn(void *args)
 	struct drand48_data drand_buffer;
 	long int drand_res;
 	int choice, key;
-
-    int my_mask_sandman[64] = {0,1,2,3,4,5,6,7,32,33,34,35,36,37,38,39,
-        8,9,10,11,12,13,14,15,40,41,42,43,44,45,46,47,16,17,18,19,
-        20,21,22,23,48,49,50,51,52,53,54,55,24,25,26,27,28,29,30,
-        31,56,57,58,59,60,61,63};
 	
-    //int my_mask_dunnington[24] = {0,1,2,12,13,14,3,4,5,15,16,17,6,7,8,18,
-    //    19,20,9,10,11,21,23,23};
-
-    //setaffinity_oncpu(my_mask_dunnington[(params->tid)%24]);
-    //setaffinity_oncpu(my_mask_sandman[(params->tid)%64]);
-    setaffinity_oncpu(params->tid);
+    setaffinity_oncpu(params->cpu);
 
 	srand48_r(params->tid * clargs.thread_seed, &drand_buffer);
 	tsc_init(&params->insert_lock_set_tsc);
@@ -138,6 +144,9 @@ void *thread_fn(void *args)
 	if (params->tid == 0)
 		timer_start(wall_timer);
 	pthread_barrier_wait(&barrier);
+
+	prfcnt_init(&params->prfcnt, params->cpu, 0);
+	prfcnt_start(&params->prfcnt);
 
 #ifdef FC_DEDICATED
     if (params->tid ==0) enqueue(&Q,0,params);
@@ -177,6 +186,9 @@ void *thread_fn(void *args)
     }
     if (params->tid > 1 ) __sync_fetch_and_add(&finished_flag,1);
 #endif
+
+	prfcnt_pause(&params->prfcnt);
+
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
 		timer_stop(wall_timer);
@@ -190,6 +202,7 @@ double pthreads_benchmark()
 	int nthreads = clargs.num_threads;
 	unsigned nr_operations = 1000000; /* FIXME */
 	int i;
+	unsigned int nr_cpus, *cpus;
 
 	printf("Pthreads Benchmark...\n");
 	printf("nthreads: %d nr_operations: %d ( %d %d)\n", clargs.num_threads, 
@@ -197,6 +210,12 @@ double pthreads_benchmark()
 #ifdef WORKLOAD_TIME
 	printf("run_time_sec: %d\n", clargs.run_time_sec);
 #endif
+
+	/* Get the affinity option from MT_CONF environment variable. */
+	get_mtconf_options(&nr_cpus, &cpus);
+	mt_conf_print(nr_cpus, cpus);
+	nthreads = nr_cpus;
+	clargs.num_threads = nr_cpus;
 
 	XMALLOC(threads, clargs.num_threads);
 	XMALLOC(params, clargs.num_threads);
@@ -234,6 +253,7 @@ double pthreads_benchmark()
 	for (i=0; i < nthreads; i++) {
 		memset(&params[i], 0, sizeof(*params));
 		params[i].tid = i;
+		params[i].cpu = cpus[i];
 #ifdef WORKLOAD_FIXED
     #ifdef FC_DEDICATED
 		params[i].nr_operations = nr_operations / (nthreads-2);
@@ -244,6 +264,9 @@ double pthreads_benchmark()
 		params[i].nr_operations = UINT32_MAX;
 #else
 		params[i].nr_operations = nr_operations;
+#endif
+#ifdef FC_QUEUE
+		tsc_init(&params[i].fc_pub_spin_tsc);
 #endif
 	}
 
@@ -276,4 +299,4 @@ double pthreads_benchmark()
 	//print_set_length(&Q);
 	
     return timer_report_sec(wall_timer);
-        }
+}

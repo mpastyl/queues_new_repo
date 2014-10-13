@@ -127,18 +127,25 @@ int try_access_enq(struct queue_t * Q,struct pub_record *  pub,int operation, in
     pub[tid].pending=1;
     while (1){
         if(Q->lock_enq){
+			tsc_start(&params->fc_pub_spin_tsc);
             count=0;
             while((!pub[tid].response)&&(count<10000)) count++; //check periodicaly for lock
             if(pub[tid].response ==1){
                 pub[tid].response=0;
+				tsc_pause(&params->fc_pub_spin_tsc);
                 return (pub[tid].val);
             }
+			tsc_pause(&params->fc_pub_spin_tsc);
         }
         else{
             if(__sync_lock_test_and_set(&(Q->lock_enq),1)) continue;// must spin backto response
             else{
+//				printf("Enq Combiner %2d\n", params->tid);
+//				int count2;
+//				for (count2=0; count2 < 100000; count2++) {
                 for(i=0 ;i<n; i++){
                     if(pub[i].pending){
+//						printf("  Enq %2d: Operation %d for %2d\n", params->tid, pub[i].op, i);
                         if (pub[i].op ==1) {
                             _enqueue(Q,pub[i].val);
                         }
@@ -152,6 +159,7 @@ int try_access_enq(struct queue_t * Q,struct pub_record *  pub,int operation, in
                         pub[i].response = 1;
                     }
                 }
+//				}
                 int temp_val=pub[tid].val;
                 pub[tid].response=0;
                 Q->lock_enq=0;
@@ -182,8 +190,10 @@ int try_access_deq(struct queue_t * Q,struct pub_record *  pub,int operation, in
         else{
             if(__sync_lock_test_and_set(&(Q->lock_deq),1)) continue;// must spin backto response
             else{
+				printf("Deq Combiner %2d\n", params->tid);
                 for(i=0 ;i<n; i++){
                     if(pub[i].pending){
+						printf("  Deq %2d: Operation %d for %2d\n", params->tid, pub[i].op, i);
                         if (pub[i].op ==1) {
                             _enqueue(Q,pub[i].val);
                         }

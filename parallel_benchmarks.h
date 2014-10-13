@@ -4,10 +4,12 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "tsc.h"
+#include "prfcnt_snb.h"
 
 typedef struct {
 	
     unsigned tid;
+	unsigned int cpu;
     char pad0[(64-sizeof(unsigned))/sizeof(char)];
 	unsigned nr_operations;
     char pad1[(64-sizeof(unsigned))/sizeof(char)];
@@ -25,10 +27,16 @@ typedef struct {
     char pad4[(64-sizeof(unsigned int))/sizeof(char)];
 #endif
 
+#ifdef FC_QUEUE
+	tsc_t fc_pub_spin_tsc;
+    char padFC[(64-sizeof(tsc_t))/sizeof(char)];
+#endif
 
 	tsc_t insert_lock_set_tsc;
     char pad9[(64-sizeof(tsc_t))/sizeof(char)];
 
+	prfcnt_t prfcnt;
+    char pad10[(64-sizeof(prfcnt_t))/sizeof(char)];
 //	tsc_t operations_tsc;
 } params_t;
 

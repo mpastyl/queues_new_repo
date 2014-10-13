@@ -1,9 +1,10 @@
-CC = /various/common_tools/gcc-4.8.2/bin/gcc-4.8.2
+#CC = /various/common_tools/gcc-4.8.2/bin/gcc-4.8.2
+CC = gcc
 CFLAGS = -Wall -Wextra -g
 
 CFLAGS += -pthread
-#WORKLOAD = -DWORKLOAD_TIME
-WORKLOAD = -DWORKLOAD_FIXED
+WORKLOAD = -DWORKLOAD_TIME
+#WORKLOAD = -DWORKLOAD_FIXED
 CFLAGS += $(WORKLOAD)
 CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
