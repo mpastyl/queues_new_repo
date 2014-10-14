@@ -110,6 +110,14 @@ static void params_print()
     printf("total times the lock changed owners %llu \n",total_changes);
 #endif
 
+#ifdef MSQUEUE_ABA
+	for (i=0; i < clargs.num_threads; i++) {
+		printf("Thread %2d: max streak %llu\n", params[i].tid, 
+		       params[i].max_streak);
+	}
+	printf("\n");
+#endif
+
 #ifdef FC_QUEUE
 	printf("\n");
 	printf("Verbose timers: fc_pub_spin_tsc\n");
@@ -144,7 +152,11 @@ void *thread_fn(void *args)
 	tsc_init(&params->insert_lock_set_tsc);
 
     params->enq_sum=params->deq_sum=0;
-
+#ifdef MSQUEUE_ABA
+    params->curr_streak=params->max_streak=0;
+    params->last_cas=0;
+#endif
+    
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
 		timer_start(wall_timer);

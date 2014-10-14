@@ -27,6 +27,14 @@ typedef struct {
     char pad4[(64-sizeof(unsigned int))/sizeof(char)];
 #endif
 
+#ifdef MSQUEUE_ABA
+    unsigned long long max_streak;
+    unsigned long long curr_streak;
+    int last_cas;
+    char pad14[(64-2*sizeof(unsigned long long int) \
+        - sizeof(int ))/sizeof(char)];
+#endif
+
 #ifdef FC_QUEUE
 	tsc_t fc_pub_spin_tsc;
     char padFC[(64-sizeof(tsc_t))/sizeof(char)];

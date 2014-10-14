@@ -82,17 +82,62 @@ void enqueue(struct queue_t * Q, int val,params_t * params){
 		if (tail.both == Q->Tail.both){
 			if (get_pointer(next_p.both) == 0){
                 new_to_set =set_both(new_to_set,node,get_count(next_p.both) +(__int128)1);
-				if (__sync_bool_compare_and_swap(&(((struct node_t * )get_pointer(tail.both))->next.both),next_p.both,new_to_set))
-					break;
+				if (__sync_bool_compare_and_swap(&(((struct node_t * )get_pointer(tail.both))->next.both),next_p.both,new_to_set)){
+					
+                    if(params->last_cas==1)
+                            params->curr_streak++;
+                    else {
+                        params->curr_streak=1;
+                        params->last_cas=1;
+                    }
+                    break;
+                 }
+                 else{
+                    if (params->curr_streak > params->max_streak){
+                        params->max_streak = params->curr_streak;
+                    }
+                    params->curr_streak =0;
+                    params->last_cas=0;
+                }
 			}
 			else{
                 new_to_set=set_both(new_to_set,next_p.both,get_count(tail.both)+(__int128)1);
 				temp = __sync_bool_compare_and_swap(&Q->Tail.both,tail.both,new_to_set);
+                if (temp){
+                    if(params->last_cas==1)
+                            params->curr_streak++;
+                    else {
+                        params->curr_streak=1;
+                        params->last_cas=1;
+                    }
+                }
+                else{
+                    if (params->curr_streak > params->max_streak){
+                        params->max_streak = params->curr_streak;
+                    }
+                    params->curr_streak =0;
+                    params->last_cas=0;
+                }
 			}
 		}
 	}
     new_to_set=set_both(new_to_set,node,get_count(tail.both)+(__int128)1);
 	temp = __sync_bool_compare_and_swap(&Q->Tail.both,tail.both,new_to_set);
+    if (temp){
+        if(params->last_cas==1)
+                params->curr_streak++;
+        else {
+            params->curr_streak=1;
+            params->last_cas=1;
+        }
+    }
+    else{
+        if (params->curr_streak > params->max_streak){
+            params->max_streak = params->curr_streak;
+        }
+        params->curr_streak =0;
+        params->last_cas=0;
+    }
 }
 
 int dequeue(struct queue_t * Q,int * pvalue,params_t * params){
