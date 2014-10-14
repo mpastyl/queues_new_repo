@@ -27,6 +27,11 @@ typedef struct {
     char pad4[(64-sizeof(unsigned int))/sizeof(char)];
 #endif
 
+#ifdef GLOBAL_LOCK
+    double max_wait;
+    char pad15[(64-sizeof(double))/sizeof(char)];
+#endif
+
 #ifdef MSQUEUE_ABA
     unsigned long long max_streak;
     unsigned long long curr_streak;

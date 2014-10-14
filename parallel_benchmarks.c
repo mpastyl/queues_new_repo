@@ -107,7 +107,14 @@ static void params_print()
 	
 #ifdef GLOBAL_LOCK
     printf("total times the lock was taken %llu \n", total_times_lock_taken);
-    printf("total times the lock changed owners %llu \n",total_changes);
+    printf("total times the lock changed owners %llu \n",total_changes);    
+
+	for (i=0; i < clargs.num_threads; i++) {
+		printf("Thread %2d: max wait %4.20lf\n", params[i].tid, 
+		       params[i].max_wait);
+	}
+	printf("\n");
+
 #endif
 
 #ifdef MSQUEUE_ABA
@@ -152,6 +159,11 @@ void *thread_fn(void *args)
 	tsc_init(&params->insert_lock_set_tsc);
 
     params->enq_sum=params->deq_sum=0;
+
+#ifdef GLOBAL_LOCK
+    params->max_wait=0;
+#endif
+
 #ifdef MSQUEUE_ABA
     params->curr_streak=params->max_streak=0;
     params->last_cas=0;
