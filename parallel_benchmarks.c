@@ -105,6 +105,11 @@ static void params_print()
 	printf("\n");
 #endif
 	
+#ifdef GLOBAL_LOCK
+    printf("total times the lock was taken %llu \n", total_times_lock_taken);
+    printf("total times the lock changed owners %llu \n",total_changes);
+#endif
+
 #ifdef FC_QUEUE
 	printf("\n");
 	printf("Verbose timers: fc_pub_spin_tsc\n");

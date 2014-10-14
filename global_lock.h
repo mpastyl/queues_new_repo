@@ -43,6 +43,11 @@ void _enqueue(struct queue_t * Q, int val){
 
 }
 
+unsigned long long total_changes = 0;
+unsigned long long total_times_lock_taken = 0;
+int last_owner = 0;
+
+
 void enqueue(struct queue_t * Q, int val,params_t * params)
 {
     /*
@@ -55,6 +60,12 @@ void enqueue(struct queue_t * Q, int val,params_t * params)
     */
     
     lock_queue(Q);
+        total_times_lock_taken++;
+        if(last_owner != params->tid){
+            total_changes++;
+            last_owner = params->tid;
+         }
+            
         _enqueue(Q, val);
     unlock_queue(Q);
 
@@ -94,6 +105,12 @@ int dequeue(struct queue_t * Q, int * val,params_t * params){
     */
     lock_queue(Q);
 
+        total_times_lock_taken++;
+        if(last_owner != params->tid){
+            total_changes++;
+            last_owner = params->tid;
+         }
+        
         ret = _dequeue(Q, val);
     
     unlock_queue(Q);
