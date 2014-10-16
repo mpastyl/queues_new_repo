@@ -12,7 +12,7 @@ CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
 #LDFLAGS = -L/home/users/jimsiak/local/lib/ -ltcmalloc
 
-PROGS =  main.global_lock main.msqueue_noaba main.msqueue_aba main.optimistic main.fc_queue main.fc_dedicated main.fc_hybrid
+PROGS =  main.global_lock main.msqueue_noaba main.msqueue_aba main.optimistic main.fc_queue main.fc_dedicated main.fc_hybrid main.fc_one_word
 
 all: $(PROGS)
 
@@ -32,6 +32,9 @@ main.optimistic: $(SRC)
 
 main.fc_queue: $(SRC)
 	$(CC) $(CFLAGS) -DFC_QUEUE -o $@ $^
+
+main.fc_one_word: $(SRC)
+	$(CC) $(CFLAGS) -DFC_ONE_WORD -o $@ $^
 
 main.fc_dedicated: $(SRC)
 	$(CC) $(CFLAGS) -DFC_DEDICATED -o $@ $^

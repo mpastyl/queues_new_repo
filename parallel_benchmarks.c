@@ -22,6 +22,8 @@
 #	include "optimistic_queue.h"
 #elif defined(FC_QUEUE)
 #	include "fc_queue.h"
+#elif defined(FC_ONE_WORD)
+#	include "fc_queue_one_word.h"
 #elif defined(FC_DEDICATED)
 #	include "fc_dedicated.h"
 #elif defined(FC_HYBRID)

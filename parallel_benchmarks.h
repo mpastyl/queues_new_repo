@@ -40,7 +40,7 @@ typedef struct {
         - sizeof(int ))/sizeof(char)];
 #endif
 
-#ifdef FC_QUEUE
+#if defined(FC_QUEUE) || defined(FC_ONE_WORD)
 	tsc_t fc_pub_spin_tsc;
     char padFC[(64-sizeof(tsc_t))/sizeof(char)];
 #endif
