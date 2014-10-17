@@ -4,6 +4,7 @@
 #include <pthread.h> /* pthread_spinlock */
 #include "tsc.h"
 #include "parallel_benchmarks.h"
+#include "clargs.h"
 
 struct node_t{
 	int value;//TODO: maybe change this
@@ -13,13 +14,27 @@ struct node_t{
 struct queue_t{
 	struct node_t * Head;
 	struct node_t * Tail;
-//    int lock;
-    pthread_spinlock_t lock;
+    int lock;
+//    pthread_spinlock_t lock;
 };
 
-#define lock_init(Q)  pthread_spin_init(&Q->lock, PTHREAD_PROCESS_SHARED)
-#define lock_queue(Q)   pthread_spin_lock(&Q->lock)
-#define unlock_queue(Q) pthread_spin_unlock(&Q->lock)
+#define lock_init(Q) do { Q->lock = 0; } while(0)
+#define lock_queue(Q) \
+	do { \
+    while(1) { \
+        if (Q->lock == 0) { \
+            if (!__sync_lock_test_and_set(&Q->lock,1)) \
+                break; \
+         } \
+		 int kkk; \
+		for (kkk=0; kkk < clargs.backoff; kkk++); \
+    } \
+    } while(0)
+#define unlock_queue(Q) lock_init(Q)
+
+//#define lock_init(Q)  pthread_spin_init(&Q->lock, PTHREAD_PROCESS_SHARED)
+//#define lock_queue(Q)   pthread_spin_lock(&Q->lock)
+//#define unlock_queue(Q) pthread_spin_unlock(&Q->lock)
 
 void initialize(struct queue_t * Q,int nthreads){//TODO: init count?
 	struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
@@ -50,15 +65,7 @@ int last_owner = 0;
 
 void enqueue(struct queue_t * Q, int val,params_t * params)
 {
-    /*
-    while(1) {
-        if (Q->lock == 0) {
-            if (!__sync_lock_test_and_set(&Q->lock,1))
-                break;
-         }
-    }
-    */
-    
+   
     lock_queue(Q);
         total_times_lock_taken++;
         if(last_owner != params->tid){

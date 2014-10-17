@@ -110,6 +110,8 @@ static void params_print()
 #ifdef GLOBAL_LOCK
     printf("total times the lock was taken %llu \n", total_times_lock_taken);
     printf("total times the lock changed owners %llu \n",total_changes);
+	printf("Average operation streak: %.2lf\n", 
+	       (double)total_times_lock_taken / total_changes);
 #endif
 
 #ifdef MSQUEUE_ABA
@@ -120,7 +122,7 @@ static void params_print()
 	printf("\n");
 #endif
 
-#ifdef FC_QUEUE
+#if defined(FC_QUEUE) || defined(FC_ONE_WORD)
 	printf("\n");
 	printf("Verbose timers: fc_pub_spin_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
@@ -128,6 +130,8 @@ static void params_print()
 		       tsc_getsecs(&params[i].fc_pub_spin_tsc));
 	}
 	printf("\n");
+
+	printf("Combiner changed %8llu times\n", combiner_changes);
 #endif
 
 	printf("\n");
@@ -167,6 +171,9 @@ void *thread_fn(void *args)
 	prfcnt_init(&params->prfcnt, params->cpu, 0);
 	prfcnt_start(&params->prfcnt);
 
+//	if (params->tid == 1)
+//		sleep(3);
+
 #ifdef FC_DEDICATED
     if (params->tid ==0) enqueue(&Q,0,params);
     else if (params->tid ==1) {
@@ -194,7 +201,7 @@ void *thread_fn(void *args)
             params->enq_sum+=key;
             //params->value_sum += key;
             
-		} else {                                   /* deletion */
+		} else {                                   /* dequeue */
 			params->dequeues++;
 			if (dequeue(&Q, &key, params)) params->deq_sum+=key;
             //params->value_sum -= key;
@@ -293,6 +300,10 @@ double pthreads_benchmark()
 		pthread_create(&threads[i], NULL, thread_fn, &params[i]);
 
 #ifdef WORKLOAD_TIME
+//	sleep(3);
+//	params[0].time_to_leave = 1;
+//	sleep(3);
+//	params[1].time_to_leave = 1;
 	sleep(clargs.run_time_sec);
 	for (i=0; i < nthreads; i++)
 		params[i].time_to_leave = 1;
