@@ -11,7 +11,8 @@ typedef struct {
 	    enqueue_frac,
 	    init_seed,
 	    thread_seed,
-        verify;
+        verify,
+		backoff;
 #ifdef WORKLOAD_TIME
 	int run_time_sec;
 #endif

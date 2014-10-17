@@ -13,11 +13,12 @@
 #define ARGUMENT_DEFAULT_INIT_SEED 1024
 #define ARGUMENT_DEFAULT_THREAD_SEED 128
 #define ARGUMENT_DEFAULT_VERIFY 0
+#define ARGUMENT_DEFAULT_BACKOFF 0
 #ifdef WORKLOAD_TIME
 #  define ARGUMENT_DEFAULT_RUN_TIME_SEC 5
 #endif
 
-static char *opt_string = "ht:s:m:l:r:e:j:z:v:";
+static char *opt_string = "ht:s:m:l:r:e:j:z:v:b:";
 static struct option long_options[] = {
 	{ "help",            no_argument,       NULL, 'h' },
 	{ "num-threads",     required_argument, NULL, 't' },
@@ -28,6 +29,7 @@ static struct option long_options[] = {
 	{ "init-seed",       required_argument, NULL, 'e' },
 	{ "thread-seed",     required_argument, NULL, 'j' },
     { "verify",          required_argument, NULL, 'v' },
+	{ "backoff",         required_argument, NULL, 'b' },
 #ifdef WORKLOAD_TIME
 	{ "run-time-sec",    required_argument, NULL, 'r' },
 #endif
@@ -42,6 +44,7 @@ clargs_t clargs = {
 	ARGUMENT_DEFAULT_INIT_SEED,
 	ARGUMENT_DEFAULT_THREAD_SEED,
     ARGUMENT_DEFAULT_VERIFY,
+	ARGUMENT_DEFAULT_BACKOFF,
 #ifdef WORKLOAD_TIME
 	ARGUMENT_DEFAULT_RUN_TIME_SEC,
 #endif
@@ -59,11 +62,12 @@ static void clargs_print_usage(char *progname)
 	       "    -e,--init-seed    the seed that is used for the hash initializion [%d]\n"
 	       "    -j,--thread-seed  the seed that is used for the thread operations [%d]\n"
            "    -v,--verify verify results at end of run [%d]\n",
+           "    -b,--backoff [%d]\n",
 	       progname, ARGUMENT_DEFAULT_NUM_THREADS,
 		   ARGUMENT_DEFAULT_INIT_INSERTIONS,
 	       ARGUMENT_DEFAULT_MAX_KEY, ARGUMENT_DEFAULT_ENQUEUE_FRAC,
 		   ARGUMENT_DEFAULT_INIT_SEED, ARGUMENT_DEFAULT_THREAD_SEED,
-           ARGUMENT_DEFAULT_VERIFY);
+           ARGUMENT_DEFAULT_VERIFY, ARGUMENT_DEFAULT_BACKOFF);
 
 #ifdef WORKLOAD_TIME
 	printf("    -r,--run-time-sec execution time [%d sec]\n",
@@ -109,6 +113,9 @@ void clargs_init(int argc, char **argv)
         case 'v':
             clargs.verify = atoi(optarg);
             break;
+		case 'b':
+			clargs.backoff = atoi(optarg);
+			break;
 #ifdef WORKLOAD_TIME
 		case 'r':
 			clargs.run_time_sec = atoi(optarg);
@@ -133,11 +140,13 @@ void clargs_print()
 	       "  max_key: %d\n"
 	       "  enqueue_frac: %d\n"
 	       "  init_seed: %d\n"
-	       "  thread_seed: %d\n",
+	       "  thread_seed: %d\n"
+		   "  backof: %d\n",
 	       clargs.num_threads, 
 	       clargs.init_insertions, clargs.max_key,
 	       clargs.enqueue_frac,
-		   clargs.init_seed, clargs.thread_seed);
+		   clargs.init_seed, clargs.thread_seed,
+		   clargs.backoff);
 
 #ifdef WORKLOAD_TIME
 	printf("  run_time_sec: %d\n", clargs.run_time_sec);

@@ -4,6 +4,7 @@
 #include <pthread.h> /* pthread_spinlock */
 #include "tsc.h"
 #include "parallel_benchmarks.h"
+#include "clargs.h"
 
 struct node_t{
 	int value;//TODO: maybe change this
@@ -37,6 +38,8 @@ void enqueue(struct queue_t * Q, int val,params_t *params){
 			if (next_p == NULL){
                 if (__sync_bool_compare_and_swap(&tail->next, next_p, node))
                     break;
+				int kkk;
+				for (kkk=0; kkk < clargs.backoff; kkk++);
 			}
 			else{
                 __sync_bool_compare_and_swap(&Q->Tail, tail, next_p);
