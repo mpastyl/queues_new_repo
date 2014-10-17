@@ -16,6 +16,9 @@ typedef struct {
 #ifdef WORKLOAD_TIME
 	int run_time_sec;
 #endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+    int loops;
+#endif
 } clargs_t;
 extern clargs_t clargs;
 

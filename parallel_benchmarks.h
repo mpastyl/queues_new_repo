@@ -30,9 +30,11 @@ typedef struct {
 #ifdef GLOBAL_LOCK
     double max_wait;
     char pad15[(64-sizeof(double))/sizeof(char)];
+    double curr_timer;
+    char pad16[(64-sizeof(double))/sizeof(char)];
 #endif
 
-#ifdef MSQUEUE_ABA
+#if defined(MSQUEUE_ABA)||defined(MSQUEUE)
     unsigned long long max_streak;
     unsigned long long curr_streak;
     int last_cas;
@@ -40,7 +42,7 @@ typedef struct {
         - sizeof(int ))/sizeof(char)];
 #endif
 
-#if defined(FC_QUEUE) || defined(FC_ONE_WORD)
+#if defined(FC_QUEUE) || defined(FC_ONE_WORD) || defined(FC_DEDICATED) || defined(FC_HYBRID)
 	tsc_t fc_pub_spin_tsc;
     char padFC[(64-sizeof(tsc_t))/sizeof(char)];
 #endif

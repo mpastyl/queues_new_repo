@@ -168,10 +168,15 @@ void printqueue(struct queue_t * Q){
     
 }
 
+unsigned long long total_combiners=0;
+unsigned long long combiner_changed=0;
+int last_combiner=-1;
+
+
 void execute_operation(struct queue_t * Q, int n, params_t *params)
 {
     int tid = params->tid;
-    int i, res, count;
+    int i, res, count,j;
 	struct pub_record *pub = &pub_records[tid];
     
     while (1) {
@@ -190,6 +195,14 @@ void execute_operation(struct queue_t * Q, int n, params_t *params)
             if(__sync_lock_test_and_set(&(Q->lock),1)) {
 				continue;
 			} else { /* We are the combiner. */
+
+              total_combiners++;
+              if (last_combiner!= tid) {
+                    last_combiner = tid;
+                    combiner_changed++;
+              }
+
+              for(j=0;j<clargs.loops;j++){
                 for (i=0; i<n; i++) {
 					struct pub_record *curr_pub_p = &pub_records[i];
 					struct pub_record curr_pub = pub_records[i];
@@ -212,6 +225,7 @@ void execute_operation(struct queue_t * Q, int n, params_t *params)
 //						printf("pending after  is %8llx\n", PUB_RECORD_TO_PENDING(curr_pub_p));
                     }
                 }
+              }
 
                 Q->lock = 0;
                 return;

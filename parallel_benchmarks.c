@@ -108,21 +108,38 @@ static void params_print()
 #endif
 	
 #ifdef GLOBAL_LOCK
+    double total_max_wait=0;
+    double total_min_wait=INT32_MAX;
+	double avg_wait = 0;
+    for (i=0; i < clargs.num_threads; i++) {
+        params[i].max_wait =  tsc_getsecs(&params[i].insert_lock_set_tsc) /(double) params[i].operations;
+        if (params[i].max_wait >total_max_wait) total_max_wait = params[i].max_wait;
+        if (params[i].max_wait< total_min_wait) total_min_wait = params[i].max_wait;
+        avg_wait += params[i].max_wait;
+    }
+
+    printf("Total Max wait in  a single op : %4.8lf\n", total_max_wait);
+    printf("Total min (max) wait in  a single op : %4.8lf\n", total_min_wait);
+    printf("Avg wait in  a single op : %4.8lf\n", avg_wait/(double) clargs.num_threads);
+    
     printf("total times the lock was taken %llu \n", total_times_lock_taken);
     printf("total times the lock changed owners %llu \n",total_changes);
 	printf("Average operation streak: %.2lf\n", 
 	       (double)total_times_lock_taken / total_changes);
 #endif
 
-#ifdef MSQUEUE_ABA
-	for (i=0; i < clargs.num_threads; i++) {
-		printf("Thread %2d: max streak %llu\n", params[i].tid, 
+#if defined(MSQUEUE_ABA) || defined(MSQUEUE)
+	int total_streak=0;
+    for (i=0; i < clargs.num_threads; i++) {
+		if (total_streak < params[i].max_streak) total_streak = params[i].max_streak;
+        printf("Thread %2d: max streak %llu\n", params[i].tid, 
 		       params[i].max_streak);
 	}
+    printf("Total Max streak %d\n",total_streak);
 	printf("\n");
 #endif
 
-#if defined(FC_QUEUE) || defined(FC_ONE_WORD)
+#if defined(FC_QUEUE) || defined(FC_ONE_WORD) || defined(FC_DEDICATED)
 	printf("\n");
 	printf("Verbose timers: fc_pub_spin_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
@@ -130,8 +147,11 @@ static void params_print()
 		       tsc_getsecs(&params[i].fc_pub_spin_tsc));
 	}
 	printf("\n");
-
-	printf("Combiner changed %8llu times\n", combiner_changes);
+    
+    printf("Total combiners %8llu \n",total_combiners);
+	printf("Combiner changed %8llu times\n", combiner_changed);
+    printf("Avg combiner streak %.2lf\n",
+            (double) total_combiners/ combiner_changed);
 #endif
 
 	printf("\n");
@@ -178,7 +198,7 @@ void *thread_fn(void *args)
 
 //	if (params->tid == 1)
 //		sleep(3);
-
+/*
 #ifdef FC_DEDICATED
     if (params->tid ==0) enqueue(&Q,0,params);
     else if (params->tid ==1) {
@@ -188,6 +208,7 @@ void *thread_fn(void *args)
     else{
 
 #endif
+*/
 	for (i=0; i < params->nr_operations; i++) {
 #if defined(WORKLOAD_TIME) || defined (WORKLOAD_ONE_THREAD)
 		if (params->time_to_leave)
@@ -213,11 +234,12 @@ void *thread_fn(void *args)
             
 		}
 	}
+/*
 #ifdef FC_DEDICATED
     }
     if (params->tid > 1 ) __sync_fetch_and_add(&finished_flag,1);
 #endif
-
+*/
 	prfcnt_pause(&params->prfcnt);
 
 	pthread_barrier_wait(&barrier);
@@ -259,11 +281,13 @@ double pthreads_benchmark()
     init_params.tid=0;
     int res;
 	for (i=0; i < clargs.init_insertions; i++) {
-#ifdef FC_DEDICATED
-        _enqueue(&Q, i);
-#else
+
+//#ifdef FC_DEDICATED
+//        _enqueue(&Q, i);
+//#else
+
         enqueue(&Q, i, &init_params);
-#endif
+//#endif
         total_enq_sum+=i;
         /*if(clargs.verify==1) {//FIXME
             if (res){
@@ -286,11 +310,11 @@ double pthreads_benchmark()
 		params[i].tid = i;
 		params[i].cpu = cpus[i];
 #ifdef WORKLOAD_FIXED
-    #ifdef FC_DEDICATED
-		params[i].nr_operations = nr_operations / (nthreads-2);
-    #else
+    //#ifdef FC_DEDICATED
+	//	params[i].nr_operations = nr_operations / (nthreads-2);
+    //#else
 		params[i].nr_operations = nr_operations / nthreads;
-    #endif
+    //#endif
 #elif WORKLOAD_TIME
 		params[i].nr_operations = UINT32_MAX;
 #else

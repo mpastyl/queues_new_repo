@@ -65,11 +65,14 @@ int last_owner = 0;
 
 void enqueue(struct queue_t * Q, int val,params_t * params)
 {
+    //params->curr_timer = tsc_getsecs(&params->insert_lock_set_tsc);
+    tsc_start(&params->insert_lock_set_tsc); 
     lock_queue(Q);
         tsc_pause(&params->insert_lock_set_tsc); 
-        double curr_wait = tsc_getsecs(&params->insert_lock_set_tsc);
-        if (curr_wait > params->max_wait) params->max_wait = curr_wait;
-        
+        //double curr_wait = tsc_getsecs(&params->insert_lock_set_tsc) - params->curr_timer;
+        //if (curr_wait > params->max_wait) params->max_wait = curr_wait;
+        //params->max_wait += tsc_getsecs(&params->insert_lock_set_tsc);
+
         total_times_lock_taken++;
         if(last_owner != params->tid){
             total_changes++;

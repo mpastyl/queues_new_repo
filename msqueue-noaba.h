@@ -31,23 +31,30 @@ void enqueue(struct queue_t * Q, int val,params_t *params){
 	struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
 	node->value = val;
 	node->next = NULL;
+    params->curr_streak=0;
 	while (1) {
 		tail = Q->Tail;
 		struct node_t *next_p = tail->next;
 		if (tail == Q->Tail) {
 			if (next_p == NULL){
+                params->curr_streak++;
                 if (__sync_bool_compare_and_swap(&tail->next, next_p, node))
                     break;
 				int kkk;
 				for (kkk=0; kkk < clargs.backoff; kkk++);
 			}
 			else{
+                params->curr_streak++;
                 __sync_bool_compare_and_swap(&Q->Tail, tail, next_p);
 			}
 		}
 	}
 
+    params->curr_streak++;
     __sync_bool_compare_and_swap(&Q->Tail, tail, node);
+    
+    if (params->curr_streak > params->max_streak) 
+        params->max_streak =  params->curr_streak;
 }
 
 int dequeue(struct queue_t * Q,int * pvalue,params_t *params){

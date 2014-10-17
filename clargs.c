@@ -17,8 +17,11 @@
 #ifdef WORKLOAD_TIME
 #  define ARGUMENT_DEFAULT_RUN_TIME_SEC 5
 #endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+#define ARGUMENT_DEFAULT_LOOP 1
+#endif
 
-static char *opt_string = "ht:s:m:l:r:e:j:z:v:b:";
+static char *opt_string = "ht:s:m:l:r:e:j:z:v:b:o:";
 static struct option long_options[] = {
 	{ "help",            no_argument,       NULL, 'h' },
 	{ "num-threads",     required_argument, NULL, 't' },
@@ -32,6 +35,9 @@ static struct option long_options[] = {
 	{ "backoff",         required_argument, NULL, 'b' },
 #ifdef WORKLOAD_TIME
 	{ "run-time-sec",    required_argument, NULL, 'r' },
+#endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+	{ "loops",         required_argument, NULL, 'o' },
 #endif
 	{ NULL, 0, NULL, 0 }
 };
@@ -48,6 +54,9 @@ clargs_t clargs = {
 #ifdef WORKLOAD_TIME
 	ARGUMENT_DEFAULT_RUN_TIME_SEC,
 #endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+    ARGUMENT_DEFAULT_LOOP,
+#endif   
 };
 
 static void clargs_print_usage(char *progname)
@@ -73,7 +82,10 @@ static void clargs_print_usage(char *progname)
 	printf("    -r,--run-time-sec execution time [%d sec]\n",
 			ARGUMENT_DEFAULT_RUN_TIME_SEC);
 #endif
-    
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+    printf("    -o,--loops number of loops when combining [%d]\n",
+            ARGUMENT_DEFAULT_LOOP);
+#endif 
 
 }
 
@@ -121,6 +133,11 @@ void clargs_init(int argc, char **argv)
 			clargs.run_time_sec = atoi(optarg);
 			break;
 #endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+		case 'o':
+			clargs.loops = atoi(optarg);
+			break;
+#endif
 		default:
 			clargs_print_usage(argv[0]);
 			exit(1);
@@ -150,5 +167,8 @@ void clargs_print()
 
 #ifdef WORKLOAD_TIME
 	printf("  run_time_sec: %d\n", clargs.run_time_sec);
+#endif
+#if defined(FC_QUEUE) ||defined(FC_ONE_WORD) ||defined(FC_DEDICATED) ||defined(FC_HYBRID)
+    printf(" loops: %d\n",clargs.loops);    
 #endif
 }
