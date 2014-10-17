@@ -110,7 +110,9 @@ void _enqueue(struct queue_t * Q, int val){
         tail->enq_count++;
     }
     else{
+        int i;
         struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
+        for (i=0;i<MAX_VALUES;i++) node->value[i]=0;
         node->deq_count=0;
         node->value[0]=val;
         node->next=NULL;
@@ -124,21 +126,22 @@ void _enqueue(struct queue_t * Q, int val){
 int _dequeue(struct queue_t * Q, int * val){
 
     struct node_t * head=Q->Head; //TODO: fix empty queue!!
-    struct node_t * next=head->next;
+    
+    struct node_t * next;
+    if(head==NULL) return 0;
+    else next=head->next;
 
-    /*if(head->enq_count==head->deq_count){
-        if(__sync_bool_compare_and_swap(&head->enq_count,head->deq_count,head->deq_count)) {
-            return 0;
-        }
-    }
-    */
-    if (head->enq_count==head->deq_count) return 0;
-    if((head->deq_count>=head->enq_count)&&(next==NULL)){printf("i used this\n");return 0;}//queue is empty
+    if(head->enq_count==head->deq_count) 
+		return 0;
+
+    if((head->deq_count>=head->enq_count)&&(next==NULL)) {
+		printf("i used this\n");return 0; //queue is empty
+	}
+
     if(head->deq_count<MAX_VALUES){
         *val=head->value[head->deq_count];
         head->deq_count++;
-    }
-    else{
+    } else{
         Q->Head=Q->Head->next;
         free(head);
         head=Q->Head;
@@ -155,23 +158,23 @@ unsigned long long total_combiners=0;
 unsigned long long combiner_changed=0;
 int last_combiner=-1;
 
-void execute_operation(struct queue_t * Q,struct pub_record *  pub,int n,params_t * params){
+void execute_operation(struct queue_t * Q,struct pub_record *  _pub,int n,params_t * params){
 
     int tid=  params->tid%16;
     int i,res,count;
     // *64 because of the padding of locks
     int lock_indx=64*(params->tid/16);
 
-	struct pub_record *my_pub = &pub[tid];
+	struct pub_record *my_pub = &_pub[tid];
 
     while (1){
         if(locks[lock_indx]){
 			tsc_start(&params->fc_pub_spin_tsc);
             count=0;
-            while((PUB_RECORD_TO_PENDING(pub) == 1) && (count<10000)) 
+            while((PUB_RECORD_TO_PENDING(my_pub) == 1) && (count<10000)) 
 				count++; //check periodicaly for lock
 
-            if(PUB_RECORD_TO_PENDING(pub) == 0) {
+            if(PUB_RECORD_TO_PENDING(my_pub) == 0) {
 				tsc_pause(&params->fc_pub_spin_tsc);
                 return;
             }
@@ -191,8 +194,8 @@ void execute_operation(struct queue_t * Q,struct pub_record *  pub,int n,params_
                 
                 
                 for (i=0; i<n; i++) {
-					struct pub_record *curr_pub_p = &pub[i];
-					struct pub_record curr_pub = pub[i];
+					struct pub_record *curr_pub_p = &_pub[i];
+					struct pub_record curr_pub = _pub[i];
                     if(PUB_RECORD_TO_PENDING(&curr_pub) == 1) {
 						int operation = PUB_RECORD_TO_OP(&curr_pub);
                         if (operation == 1) {
