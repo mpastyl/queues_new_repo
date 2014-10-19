@@ -289,53 +289,59 @@ void initialize(struct queue_t *Q, int n){
 void enqueue(struct queue_t *Q, int val,params_t * params){
     
     int tid=params->tid;
+    int n;
+    if(num_threads<16) n=num_threads;
+    else n=16;
     int local_tid=(params->tid) % 16;
     if(tid<16){
 	    pub_records_0[local_tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_0, 16, params);
+	    execute_operation(Q, pub_records_0, n, params);
     }
     else if(tid<32){
 	    pub_records_1[local_tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_1, 16, params);
+	    execute_operation(Q, pub_records_1, n, params);
     }
     else if(tid<48){
 	    pub_records_2[local_tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_2, 16, params);
+	    execute_operation(Q, pub_records_2, n, params);
     }
     else{
 	    pub_records_3[local_tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_3, 16, params);
+	    execute_operation(Q, pub_records_3, n, params);
     }
 
 }
 
 int dequeue(struct queue_t *Q, int *val,params_t * params){
     
+    int n;
     int res;
     int dequeued_val;
     int tid=params->tid;
     int local_tid=(params->tid) % 16;
+    if(num_threads<16) n=num_threads;
+    else n=16;
     if(tid<16){
 	    pub_records_0[local_tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_0, 16, params);
+	    execute_operation(Q, pub_records_0, n, params);
 	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_0[local_tid]);
 	    *val = dequeued_val;
     }
     else if(tid<32){
 	    pub_records_1[local_tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_1, 16, params);
+	    execute_operation(Q, pub_records_1, n, params);
 	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_1[local_tid]);
 	    *val = dequeued_val;
     }
     else if(tid<48){
 	    pub_records_2[local_tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_2, 16, params);
+	    execute_operation(Q, pub_records_2, n, params);
 	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_2[local_tid]);
 	    *val = dequeued_val;
     }
     else{
 	    pub_records_3[local_tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_3, 16, params);
+	    execute_operation(Q, pub_records_3, n, params);
 	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_3[local_tid]);
 	    *val = dequeued_val;
     }
