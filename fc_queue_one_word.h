@@ -196,11 +196,13 @@ void execute_operation(struct queue_t * Q, int n, params_t *params)
 				continue;
 			} else { /* We are the combiner. */
 
+              /*
               total_combiners++;
               if (last_combiner!= tid) {
                     last_combiner = tid;
                     combiner_changed++;
               }
+              */
 
               for(j=0;j<clargs.loops;j++){
                 for (i=0; i<n; i++) {
