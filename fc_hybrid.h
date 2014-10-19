@@ -5,13 +5,16 @@
 #include "tsc.h"
 #include "parallel_benchmarks.h"
 
+int MAX_VALUES=16;
 
-#define MAX_VALUES 16
+
+unsigned long long total_combiners=1;
+unsigned long long combiner_changed=1;
 
 struct node_t{
     int enq_count;
     int deq_count;
-    int value[MAX_VALUES];//TODO: maybe change this
+    int value[16];//TODO: maybe change this
     struct node_t * next;
 };
 
@@ -28,39 +31,24 @@ struct queue_t{
 
 
 struct pub_record{ //TODO: pad?? to avoid false sharing.
-	/* request -> [ reserved(29bits) | operation(2bits) | pending(1bit) | val(32bits) ] */
-	/*volatile*/ long long request; 
-    char pad1[(64-sizeof(long long))/sizeof(char)];
+    int pending; //1 = waiting for op
+    char pad1[(64-sizeof(int))/sizeof(char)];
+    int op; // operation 1= enqueue , 0= dequeue
+    char pad2[(64-sizeof(int))/sizeof(char)];
+    int val;
+    char pad3[(64-sizeof(int))/sizeof(char)];
+    int response; //1 means reposponse is here!
+    char pad4[(64-sizeof(int))/sizeof(char)];
 } __attribute__ ((packed));
 
+int ERROR_VALUE=INT32_MAX;
 
 
-#define LSB_32BIT(num)  ( (num) & 0x00000001 )
-#define LSB2_32BIT(num) ( (num) & 0x00000003 )
-
-#define PUB_RECORD_COMBINE_OP_PEND(op,pend) \
-	( (LSB2_32BIT(op) << 1) | LSB_32BIT(pend) ) 
-#define PUB_RECORD_COMBINE(op,pend,val) \
-	( ((long long)(PUB_RECORD_COMBINE_OP_PEND(op,pend)) << 32) | (long long)(val) )
-
-/* Getters */
-#define PUB_RECORD_TO_OP(pub)      LSB2_32BIT(((pub)->request) >> 33)
-#define PUB_RECORD_TO_PENDING(pub) LSB_32BIT(((pub)->request) >> 32)
-#define PUB_RECORD_TO_VAL(pub)     ((int)(((pub)->request) & 0x00000000ffffffff))
-
-/* Setters */
-#define PUB_RECORD_ZERO_PENDING(pub) \
-	( ((pub)->request) &= 0xfffffffeffffffff )
-#define PUB_RECORD_SET_PENDING(pub) \
-	( ((pub)->request) &= 0x0000000100000000 )
-
-int ERROR_VALUE = INT32_MAX;
 
 //if op==1 we work on the enqueue locks otherwise on the dequeue locks
 void lock_queue (struct queue_t * Q,int op){
 
         pthread_spin_lock(&Q->lock);
-
 }
 
 //if op==1 we work on the enqueue locks otherwise on the dequeue locks
@@ -70,21 +58,14 @@ void unlock_queue(struct queue_t * Q,int op){
 }
 
 // i need 4 locks but i do some padding so that each lock is on different line 
-int locks[4 *64];
+int locks_enq[8];
+int locks_deq[8];
 
-
-struct pub_record *pub_records_0;
-struct pub_record *pub_records_1;
-struct pub_record *pub_records_2;
-struct pub_record *pub_records_3;
-
-
-void _initialize(struct queue_t * Q,int n){//TODO: init count?
+void _initialize(struct queue_t * Q,struct pub_record * pub0,struct pub_record * pub1,struct pub_record * pub2,struct pub_record * pub3,int n){//TODO: init count?
 	int i;
     struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
 	node->next = NULL;
-    for (i=0;i<MAX_VALUES;i++) node->value[i]=0;
-	node->next = NULL;
+    for(i=0; i<MAX_VALUES;i++) node->value[i]=0;
     node->enq_count=0;
     node->deq_count=0;
 
@@ -92,13 +73,18 @@ void _initialize(struct queue_t * Q,int n){//TODO: init count?
     Q->Tail= node;
     pthread_spin_init(&Q->lock,PTHREAD_PROCESS_SHARED);
     //Q->lock = 0;
-    for(i=0;i<(4*64);i++) locks[i]=0;
+    for(i=0;i<8;i++) locks_enq[i]=0;
+    for(i=0;i<8;i++) locks_deq[i]=0;
     for(i=0; i <n ;i++){
+        pub0[i].pending = 0;
+        pub0[i].response =0;
+        pub1[i].pending = 0;
+        pub1[i].response =0;
+        pub2[i].pending = 0;
+        pub2[i].response =0;
+        pub3[i].pending = 0;
+        pub3[i].response =0;
 
-		pub_records_0[i].request = PUB_RECORD_COMBINE(0,0,0);
-		pub_records_1[i].request = PUB_RECORD_COMBINE(0,0,0);
-		pub_records_2[i].request = PUB_RECORD_COMBINE(0,0,0);
-		pub_records_3[i].request = PUB_RECORD_COMBINE(0,0,0);
     }
 }
 
@@ -110,9 +96,7 @@ void _enqueue(struct queue_t * Q, int val){
         tail->enq_count++;
     }
     else{
-        int i;
         struct node_t * node = (struct node_t *) malloc(sizeof(struct node_t));
-        for (i=0;i<MAX_VALUES;i++) node->value[i]=0;
         node->deq_count=0;
         node->value[0]=val;
         node->next=NULL;
@@ -126,22 +110,22 @@ void _enqueue(struct queue_t * Q, int val){
 int _dequeue(struct queue_t * Q, int * val){
 
     struct node_t * head=Q->Head; //TODO: fix empty queue!!
-    
-    struct node_t * next;
-    if(head==NULL) return 0;
-    else next=head->next;
+    struct node_t * next=head->next;
 
-    if(head->enq_count==head->deq_count) 
-		return 0;
-
-    if((head->deq_count>=head->enq_count)&&(next==NULL)) {
-		printf("i used this\n");return 0; //queue is empty
-	}
-
+    /*if(head->enq_count==head->deq_count){
+        if(__sync_bool_compare_and_swap(&head->enq_count,head->deq_count,head->deq_count)) {
+            return 0;
+        }
+    }
+    */
+    if (head->enq_count==head->deq_count) return 0;
+    if((head->deq_count>=head->enq_count)&&(next==NULL)){
+        return 0;}//queue is empty
     if(head->deq_count<MAX_VALUES){
         *val=head->value[head->deq_count];
         head->deq_count++;
-    } else{
+    }
+    else{
         Q->Head=Q->Head->next;
         free(head);
         head=Q->Head;
@@ -154,70 +138,54 @@ int _dequeue(struct queue_t * Q, int * val){
 }
 
 
-unsigned long long total_combiners=0;
-unsigned long long combiner_changed=0;
-int last_combiner=-1;
-
-void execute_operation(struct queue_t * Q,struct pub_record *  _pub,int n,params_t * params){
+int try_access(struct queue_t * Q,struct pub_record *  pub,int operation, int val,int n,params_t * params){
 
     int tid=  params->tid%16;
     int i,res,count;
-    // *64 because of the padding of locks
-    int lock_indx=64*(params->tid/16);
+    // *2 because of the padding of locks
+    int lock_indx=2*(params->tid/16);
 
-	struct pub_record *my_pub = &_pub[tid];
 
+    pub[tid].op = operation;
+    pub[tid].val = val;
+    pub[tid].pending=1;
     while (1){
-        if(locks[lock_indx]){
-			tsc_start(&params->fc_pub_spin_tsc);
+        if(tid!=0){
             count=0;
-            while((PUB_RECORD_TO_PENDING(my_pub) == 1) && (count<10000)) 
-				count++; //check periodicaly for lock
-
-            if(PUB_RECORD_TO_PENDING(my_pub) == 0) {
-				tsc_pause(&params->fc_pub_spin_tsc);
-                return;
+            while((!pub[tid].response)&&(count<10000)) count++; //check periodicaly for lock
+            if(pub[tid].response ==1){
+                pub[tid].response=0;
+                return (pub[tid].val);
             }
-			tsc_pause(&params->fc_pub_spin_tsc);
+            if(params->time_to_leave ==1) {
+                params->failed_to_do_op=1;
+                return ERROR_VALUE;
+            }
         }
         else{
-            if(__sync_lock_test_and_set(&(locks[lock_indx]),1)) continue;// must spin backto response
+            if(tid!=0) continue;// must spin backto response
             else{
-              
-                total_combiners++;
-                if (last_combiner!= tid) {
-                    last_combiner = tid;
-                    combiner_changed++;
-                }
-
                 lock_queue(Q,1);
-                
-                
-                for (i=0; i<n; i++) {
-					struct pub_record *curr_pub_p = &_pub[i];
-					struct pub_record curr_pub = _pub[i];
-                    if(PUB_RECORD_TO_PENDING(&curr_pub) == 1) {
-						int operation = PUB_RECORD_TO_OP(&curr_pub);
-                        if (operation == 1) {
-                            _enqueue(Q,PUB_RECORD_TO_VAL(&curr_pub));
-                        } else if(operation == 0) {
-							int temp = 0;
-                           if (!_dequeue(Q,&temp))
-							   temp = ERROR_VALUE;
-						   curr_pub_p->request = PUB_RECORD_COMBINE(0,1,temp);
-                        } else {
-							printf("wtf!!  %d \n",operation);
-						}
-//						printf("request before is %16llx\n", curr_pub_p->request);
-//						printf("pending before is %8llx\n", PUB_RECORD_TO_PENDING(curr_pub_p));
-						PUB_RECORD_ZERO_PENDING(curr_pub_p);
-//						printf("request after  is %16llx\n", curr_pub_p->request);
-//						printf("pending after  is %8llx\n", PUB_RECORD_TO_PENDING(curr_pub_p));
+                for(i=0 ;i<n; i++){
+                    if(pub[i].pending){
+                        if (pub[i].op ==1) {
+                            _enqueue(Q,pub[i].val);
+                        }
+                        else if(pub[i].op==0){
+                           res=_dequeue(Q,&pub[i].val);
+                           if(!res) 
+                                    pub[i].val = ERROR_VALUE;
+                        }
+                        else printf("wtf!!  %d \n",pub[i].op);
+                        pub[i].pending = 0;
+                        pub[i].response = 1;
                     }
                 }
+                int temp_val=pub[tid].val;
+                pub[tid].response=0;
                 unlock_queue(Q,1);
-                locks[lock_indx]=0;
-                return ;
+                //locks_enq[lock_indx]=0;
+                return temp_val;
             }
         }
    }
@@ -267,71 +235,51 @@ void printqueue(struct queue_t * Q){
 }
 */
 
+struct pub_record * pub0;
+struct pub_record * pub1;
+struct pub_record * pub2;
+struct pub_record * pub3;
 int num_threads;
 void initialize(struct queue_t *Q, int n){
     num_threads= n;
-    pub_records_0 = malloc(num_threads * sizeof(*pub_records_0));
-    pub_records_1 = malloc(num_threads * sizeof(*pub_records_1));
-    pub_records_2 = malloc(num_threads * sizeof(*pub_records_2));
-    pub_records_3 = malloc(num_threads * sizeof(*pub_records_3));
-    
-    _initialize(Q,16);
+    pub0 = (struct pub_record *) malloc(sizeof(struct pub_record)*16);
+    pub1 = (struct pub_record *) malloc(sizeof(struct pub_record)*16);
+    pub2 = (struct pub_record *) malloc(sizeof(struct pub_record)*16);
+    pub3 = (struct pub_record *) malloc(sizeof(struct pub_record)*16);
+    _initialize(Q,pub0,pub1,pub2,pub3,16);
 }
 
 
 void enqueue(struct queue_t *Q, int val,params_t * params){
     
     int tid=params->tid;
-    if(tid<16){
-	    pub_records_0[tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_0, num_threads, params);
-    }
-    else if(tid<32){
-	    pub_records_1[tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_1, num_threads, params);
-    }
-    else if(tid<48){
-	    pub_records_2[tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_2, num_threads, params);
-    }
-    else{
-	    pub_records_3[tid].request = PUB_RECORD_COMBINE(1,1,val);
-	    execute_operation(Q, pub_records_3, num_threads, params);
-    }
+    if(tid<16)
+        try_access(Q,pub0,1,val,16,params);
+    else if(tid<32)
+        try_access(Q,pub1,1,val,16,params);
+    else if(tid<48)
+        try_access(Q,pub2,1,val,16,params);
+    else
+        try_access(Q,pub3,1,val,16,params);
 
 }
 
 int dequeue(struct queue_t *Q, int *val,params_t * params){
     
     int res;
-    int dequeued_val;
     int tid=params->tid;
-    if(tid<16){
-	    pub_records_0[tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_0, num_threads, params);
-	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_0[tid]);
-	    *val = dequeued_val;
-    }
-    else if(tid<32){
-	    pub_records_1[tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_1, num_threads, params);
-	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_1[tid]);
-	    *val = dequeued_val;
-    }
-    else if(tid<48){
-	    pub_records_2[tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_2, num_threads, params);
-	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_2[tid]);
-	    *val = dequeued_val;
-    }
-    else{
-	    pub_records_3[tid].request = PUB_RECORD_COMBINE(0,1,0);
-	    execute_operation(Q, pub_records_3, num_threads, params);
-	    dequeued_val = PUB_RECORD_TO_VAL(&pub_records_3[tid]);
-	    *val = dequeued_val;
-    }
+    if(tid<16)
+        res = try_access(Q,pub0,0,9,16,params);
+    else if(tid<32)
+        res = try_access(Q,pub1,0,9,16,params);
+    else if(tid<48)
+        res = try_access(Q,pub2,0,9,16,params);
+    else
+        res = try_access(Q,pub3,0,9,16,params);
+    *val=res;
+    if (res==ERROR_VALUE) return 0;
+    else return 1;
 
-	return (dequeued_val != ERROR_VALUE);
 
 }
 #endif /*__FC_HYBRID_H*/

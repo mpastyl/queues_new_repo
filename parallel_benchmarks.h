@@ -34,13 +34,20 @@ typedef struct {
     char pad16[(64-sizeof(double))/sizeof(char)];
 #endif
 
-#if defined(MSQUEUE_ABA)||defined(MSQUEUE)
+#if defined(MSQUEUE_ABA)||defined(MSQUEUE)||defined(OPTIMISTIC)
     unsigned long long max_streak;
     unsigned long long curr_streak;
+    unsigned long long failed_cass;
     int last_cas;
-    char pad14[(64-2*sizeof(unsigned long long int) \
+    char pad14[(64-3*sizeof(unsigned long long int) \
         - sizeof(int ))/sizeof(char)];
 #endif
+
+#ifdef FC_HYBRID
+    int failed_to_do_op;
+    char padFC_HYB[(64-sizeof(int))/sizeof(char)];
+#endif
+    
 
 #if defined(FC_QUEUE) || defined(FC_ONE_WORD) || defined(FC_DEDICATED) || defined(FC_HYBRID)
 	tsc_t fc_pub_spin_tsc;

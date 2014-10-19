@@ -32,6 +32,7 @@ void enqueue(struct queue_t * Q, int val,params_t *params){
 	node->value = val;
 	node->next = NULL;
     params->curr_streak=0;
+    int temp;
 	while (1) {
 		tail = Q->Tail;
 		struct node_t *next_p = tail->next;
@@ -40,19 +41,23 @@ void enqueue(struct queue_t * Q, int val,params_t *params){
                 params->curr_streak++;
                 if (__sync_bool_compare_and_swap(&tail->next, next_p, node))
                     break;
+                params->failed_cass++;
 				int kkk;
 				for (kkk=0; kkk < clargs.backoff; kkk++);
 			}
 			else{
                 params->curr_streak++;
-                __sync_bool_compare_and_swap(&Q->Tail, tail, next_p);
+                temp = __sync_bool_compare_and_swap(&Q->Tail, tail, next_p);
+                if (!temp) params->failed_cass++;
 			}
 		}
 	}
 
     params->curr_streak++;
-    __sync_bool_compare_and_swap(&Q->Tail, tail, node);
+    temp = __sync_bool_compare_and_swap(&Q->Tail, tail, node);
     
+    if(!temp) params->failed_cass++;
+
     if (params->curr_streak > params->max_streak) 
         params->max_streak =  params->curr_streak;
 }
@@ -63,6 +68,7 @@ int dequeue(struct queue_t * Q,int * pvalue,params_t *params){
 	struct node_t *tail;
 	struct node_t *next;
 
+    int temp;
 	while(1){
 		head = Q->Head;
 		tail = Q->Tail;
@@ -71,13 +77,15 @@ int dequeue(struct queue_t * Q,int * pvalue,params_t *params){
 			if (head == tail){
 				if (next == NULL) 
 					return 0;
-                __sync_bool_compare_and_swap(&Q->Tail, tail, next);
+                temp = __sync_bool_compare_and_swap(&Q->Tail, tail, next);
+                if (!temp) params->failed_cass++;
 			}
 			else{
                 //if ((head==Q->Head) &&(first_val!=((struct node_t *)get_pointer(head))->value)) printf("change detected!\n");
 				*pvalue = next->value;
                 if (__sync_bool_compare_and_swap(&Q->Head, head, next))
                     break;
+                else params->failed_cass++;
 			}
 		}
 	}

@@ -128,18 +128,22 @@ static void params_print()
 	       (double)total_times_lock_taken / total_changes);
 #endif
 
-#if defined(MSQUEUE_ABA) || defined(MSQUEUE)
+#if defined(MSQUEUE_ABA) || defined(MSQUEUE) ||defined(OPTIMISTIC)
 	int total_streak=0;
+    double avg_failed_cass=0;
     for (i=0; i < clargs.num_threads; i++) {
+        avg_failed_cass+=(double) params[i].failed_cass/ (double) params[i].operations;
 		if (total_streak < params[i].max_streak) total_streak = params[i].max_streak;
         printf("Thread %2d: max streak %llu\n", params[i].tid, 
 		       params[i].max_streak);
 	}
     printf("Total Max streak %d\n",total_streak);
 	printf("\n");
+	printf("Avg failed CASs per operation %4.2lf\n",avg_failed_cass/(double)clargs.num_threads); 
+    printf("\n");
 #endif
 
-#if defined(FC_QUEUE) || defined(FC_ONE_WORD) || defined(FC_DEDICATED)
+#if defined(FC_QUEUE) || defined(FC_ONE_WORD) || defined(FC_DEDICATED) || defined(FC_HYBRID)
 	printf("\n");
 	printf("Verbose timers: fc_pub_spin_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
@@ -155,8 +159,8 @@ static void params_print()
 #endif
 
 	printf("\n");
-	for (i=0; i < clargs.num_threads; i++)
-		prfcnt_report(&params[i].prfcnt);
+	//for (i=0; i < clargs.num_threads; i++)
+	//prfcnt_report(&params[i].prfcnt);
 
 }
 
@@ -179,6 +183,12 @@ void *thread_fn(void *args)
 
     params->enq_sum=params->deq_sum=0;
 
+#ifdef FC_HYBRID
+    params->failed_to_do_op=0;
+#endif
+
+    //printf("####### tid %d cpu %d\n",params->tid, params->cpu);
+    
 #ifdef GLOBAL_LOCK
     params->max_wait=0;
 #endif
@@ -193,8 +203,8 @@ void *thread_fn(void *args)
 		timer_start(wall_timer);
 	pthread_barrier_wait(&barrier);
 
-	prfcnt_init(&params->prfcnt, params->cpu, 0);
-	prfcnt_start(&params->prfcnt);
+	//prfcnt_init(&params->prfcnt, params->cpu, 0);
+	//prfcnt_start(&params->prfcnt);
 
 //	if (params->tid == 1)
 //		sleep(3);
@@ -234,13 +244,17 @@ void *thread_fn(void *args)
             
 		}
 	}
+
+#ifdef FC_HYBRID
+    if (params->failed_to_do_op==1) params->enq_sum-=key;
+#endif
 /*
 #ifdef FC_DEDICATED
     }
     if (params->tid > 1 ) __sync_fetch_and_add(&finished_flag,1);
 #endif
 */
-	prfcnt_pause(&params->prfcnt);
+	//prfcnt_pause(&params->prfcnt);
 
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
